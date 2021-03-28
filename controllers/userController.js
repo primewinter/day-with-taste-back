@@ -1,6 +1,12 @@
-import routes from "../routes";
 import { Answer } from "../models/answer";
 import { Visitor } from "../models/visitor";
+import Youtube from "youtube-node";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const youtube = new Youtube();
+youtube.setKey(process.env.YOUTUBE_KEY);
 
 module.exports = {
     visitHome:  async(req, res, next) => {       
@@ -45,5 +51,46 @@ module.exports = {
 
             return res.status(200).json(response);
         });
+    },
+    searchMusic: async(req, res, next) => {
+        console.log('body => ', req.body);
+        var pageToken = req.body.pageToken;
+        youtube.addParam('order', 'relevance'); // 관련성 순서
+        youtube.addParam('type', 'video'); // 타입 지정 
+        youtube.addParam('part', 'snippet');
+        youtube.addParam('regionCode', 'KR');
+        youtube.addParam('safeSearch', 'moderate');
+        youtube.addParam('pageToken', pageToken);
+        var limit = 3;
+        var word = req.body.keyword;
+
+        console.log('검색어 : '+word);
+        ///*
+        console.log('=======================================')
+        youtube.search(word, limit, function (err, result) { // 검색 실행 
+            if (err) { 
+                console.log(err); 
+                return; 
+            } // 에러일 경우 에러공지하고 빠져나감 
+            //console.log(JSON.stringify(result, null, 2)); // 받아온 전체 리스트 출력 
+            var nextPageToken = result.nextPageToken;
+            var prevPageToken = result.prevPageToken;
+            console.log('nextPage', nextPageToken);
+            console.log('prevPage', prevPageToken);
+            var items = result["items"]; // 결과 중 items 항목만 가져옴 
+            var list = [];
+            for (var i in items) { var it = items[i]; 
+                var title = it["snippet"]["title"]; 
+                var video_id = it["id"]["videoId"]; 
+                var url = "https://www.youtube.com/watch?v=" + video_id; 
+                list.push({title: title, video_id: video_id, url: url});
+                console.log("제목 : " + title); 
+                console.log("URL : " + url); 
+                console.log("-----------"); 
+            }
+            var info = {item:list, nextPage:nextPageToken, prevPage:prevPageToken};
+            return res.status(200).json(info);
+        });
+        //*/
     }
 }
